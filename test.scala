@@ -9,7 +9,7 @@ import sun.security.util.DerValue
 object Test extends App {
     def loadClientStore = {
         val clientStore = KeyStore.getInstance("PKCS12")
-        val fis = new FileInputStream("./test.p12")
+        val fis = new FileInputStream("./test2.p12")
         clientStore.load(fis, "test".toCharArray)
         fis.close()
         clientStore
@@ -20,10 +20,11 @@ object Test extends App {
         val alias = clientStore.aliases.nextElement
         val privateKey = clientStore.getKey(alias, "test".toCharArray).asInstanceOf[java.security.PrivateKey]
         val certificate = clientStore.getCertificate(alias).asInstanceOf[X509Certificate]
-        (privateKey, certificate)
+        val certs = clientStore.getCertificateChain(alias).map(_.asInstanceOf[X509Certificate])
+        (privateKey, certificate, certs)
     }
 
-    val (privateKey, certificate) = loadPrivateKeyAndCertificate
+    val (privateKey, certificate, certs) = loadPrivateKeyAndCertificate
 
     val dataToSign = "data".getBytes
 
@@ -61,9 +62,9 @@ object Test extends App {
 
     val wwdrcCert = loadWwdrcCertificate
     
-    val pkcs7 = new PKCS7(Array(digestAlgorithmId), cInfo, Array(certificate, wwdrcCert), Array(sInfo))
+    val pkcs7 = new PKCS7(Array(digestAlgorithmId), cInfo, certs, Array(sInfo))
 
-    val bos = new BufferedOutputStream(new FileOutputStream("./signed"))
+    val bos = new BufferedOutputStream(new FileOutputStream("./scala.signed"))
     pkcs7.encodeSignedData(bos)
     bos.close
 }
